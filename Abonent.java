@@ -35,6 +35,7 @@ public class Abonent {
 	    	other.makeMyKey(pg_, openKey_);
 	}
 	
+	// тут лучше попросить вызвать другой приватный метод и отобрать открытые ключи у собеседника
 	public void makeMyKey(KeyPair pg, PublicKey openKey) {
 		pg_ = pg;
 		openKey_ = openKey;
