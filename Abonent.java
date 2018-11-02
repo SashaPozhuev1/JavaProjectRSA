@@ -6,7 +6,7 @@ public class Abonent {
 	private Cipher cipher_;
 	private KeyPairGenerator keyGen_;
 
-	public KeyPair pg_;
+	private KeyPair pg_;
 	public PublicKey openKey_;
 	private PrivateKey secretKey_;
 	
