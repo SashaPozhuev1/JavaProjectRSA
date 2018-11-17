@@ -4,8 +4,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.text.CharacterPredicates;
-import org.apache.commons.text.RandomStringGenerator;
 
 public class Abonent {
     private SecureRandom secureRandom_;
@@ -24,7 +22,6 @@ public class Abonent {
                 SecureRandom random = new SecureRandom();
                 char[] alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
                 char[][] strings = new char[2][16];
-                
                 for(int str = 0; str < 2; ++str) {
                     for (int i = 0; i < 16; ++i) {
                         strings[str][i] = alphanum[random.nextInt(alphanum.length)];
@@ -40,21 +37,22 @@ public class Abonent {
                 KeyPair pg = keyGen.genKeyPair();
                 Cipher cipher = Cipher.getInstance( "RSA" );
                    
-                getSession(mainAbonent_, pg, cipher);
+                getSession(pg, cipher);
             }
             counter_++;
+            
         }
         catch(Exception ex) {
             ex.printStackTrace();
         }
     }
     
-    private void getSession(Abonent mainAbonent,KeyPair pg, Cipher cipher) {
+    private void getSession(KeyPair pg, Cipher cipher) {
         try {
             for(int i = 0; i < 2; ++i) {
                 sessionPair_[i] = new String(
                     decryptRSA(
-                            mainAbonent.encryptRSA(i, pg.getPublic(), cipher),
+                            mainAbonent_.encryptRSA(i, pg.getPublic(), cipher),
                             pg.getPrivate(),
                             cipher
                             )
