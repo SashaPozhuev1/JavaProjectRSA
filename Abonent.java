@@ -4,6 +4,8 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.text.CharacterPredicates;
+import org.apache.commons.text.RandomStringGenerator;
 
 public class Abonent {
     private SecureRandom secureRandom_;
@@ -18,8 +20,17 @@ public class Abonent {
             // AES key generation
             if(counter_ == 0) {    
                 mainAbonent_ = this;
-                sessionPair_[0] = "Bar12345Bar12345"; //randomStringGenerator.generate(16); // 128 bit key; // randomize
-                sessionPair_[1] = "RandomInitVector"; //randomStringGenerator.generate(16); // 16 bytes; // randomize
+                // Random strings
+                SecureRandom random = new SecureRandom();
+                char[] alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
+                char[][] strings = new char[2][16];
+                
+                for(int str = 0; str < 2; ++str) {
+                    for (int i = 0; i < 16; ++i) {
+                        strings[str][i] = alphanum[random.nextInt(alphanum.length)];
+                    }
+                    sessionPair_[str] = new String(strings[str]);
+                }            
             }
             else{
                 // RSA key generation
@@ -40,7 +51,7 @@ public class Abonent {
     
     private void getSession(Abonent mainAbonent,KeyPair pg, Cipher cipher) {
         try {
-            for(int i = 0; i < 2; i++) {
+            for(int i = 0; i < 2; ++i) {
                 sessionPair_[i] = new String(
                     decryptRSA(
                             mainAbonent.encryptRSA(i, pg.getPublic(), cipher),
