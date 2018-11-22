@@ -1,7 +1,10 @@
-import javax.crypto.*;
+ import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import java.math.BigInteger;
 import java.security.*;
+import java.security.spec.RSAPublicKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -31,8 +34,25 @@ public class Abonent {
                 keyGen.initialize(2048, secureRandom);
                 KeyPair pg = keyGen.genKeyPair();
                 Cipher cipher = Cipher.getInstance( "RSA" );
-                   
-                getSession(mainAbonent, pg, cipher);
+            // ЛЁХА СМОТРИ
+                String ss = pg.getPublic().toString(); // перевожу публичный ключ в строку
+                
+                String modulus = ss.substring(ss.indexOf(":") + 2, ss.indexOf("\n", ss.indexOf(":")));
+                String exponent = ss.substring(ss.lastIndexOf(":") + 2);
+                BigInteger M = new BigInteger(modulus);
+                BigInteger E = new BigInteger(exponent);
+                RSAPublicKeySpec spec = new RSAPublicKeySpec(M, E);
+                KeyFactory factory = KeyFactory.getInstance("RSA");
+                PublicKey public_key_who = factory.generatePublic(spec);
+                
+                System.out.print(pg.getPublic() + "\n" +
+                		public_key_who + "\n" //+
+                //		spec + "\n" +
+                //		modulus + "\n" + 
+                //		exponent + "\n"
+                		);
+                // тут конец.
+                getSession(mainAbonent, pg, public_key_who, cipher);
             }
         }
         catch(Exception ex) {
@@ -40,12 +60,12 @@ public class Abonent {
         }
     }
     
-    private void getSession(Abonent mainAbonent, KeyPair pg, Cipher cipher) {
+    private void getSession(Abonent mainAbonent, KeyPair pg, PublicKey publicKey, Cipher cipher) {
         try {
             for(int i = 0; i < 2; ++i) {
                 sessionPair_[i] = new String(
                     decryptRSA(
-                            mainAbonent.encryptRSA(i, pg.getPublic(), cipher),
+                            mainAbonent.encryptRSA(i, publicKey, cipher), // pg.getPublic()
                             pg.getPrivate(),
                             cipher
                             )
@@ -58,7 +78,7 @@ public class Abonent {
     }
 
     // RSA methods - ДЛЯ ШИФРОВАНИЯ AES КЛЮЧА
-    private byte[] encryptRSA(int elem, PublicKey openKey, Cipher cipher){
+    private byte[] encryptRSA(int elem, PublicKey openKey, Cipher cipher){ // PublicKey
         try {
             cipher.init( Cipher.ENCRYPT_MODE, openKey );
             return cipher.doFinal( sessionPair_[elem].getBytes("UTF-8") ); // or toString()
