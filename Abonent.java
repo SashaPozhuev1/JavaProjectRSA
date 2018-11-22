@@ -1,4 +1,4 @@
- import javax.crypto.*;
+import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -36,9 +36,10 @@ public class Abonent {
                 Cipher cipher = Cipher.getInstance( "RSA" );
             // ЛЁХА СМОТРИ
                 String ss = pg.getPublic().toString(); // перевожу публичный ключ в строку
-                
+                // эти строки передаёшь:
                 String modulus = ss.substring(ss.indexOf(":") + 2, ss.indexOf("\n", ss.indexOf(":")));
                 String exponent = ss.substring(ss.lastIndexOf(":") + 2);
+                // когда принимаешь, делаешь это:
                 BigInteger M = new BigInteger(modulus);
                 BigInteger E = new BigInteger(exponent);
                 RSAPublicKeySpec spec = new RSAPublicKeySpec(M, E);
