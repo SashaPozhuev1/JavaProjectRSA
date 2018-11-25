@@ -7,7 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 
-import org.apache.commons.codec.binary.Base64;
+import android.util.Base64;
 
 public class Abonent {
     // AES keys
@@ -50,14 +50,14 @@ public class Abonent {
         userKeyAgree.init(userKpair.getPrivate());
         // отправляем строку АДМИНу
         byte[] userPubKeyEnc = userKpair.getPublic().getEncoded();
-        String userPubKeyEncStr = Base64.encodeBase64String(userPubKeyEnc);
+        String userPubKeyEncStr = Base64.encodeToString(userPubKeyEnc, Base64.DEFAULT);
         // получает его ключ, сессионную пару и параметры шифрования
         String[] result = mainAbonent.DHGenerateAdmin(userPubKeyEncStr);
              
-        byte[] adminPubKeyEnc = Base64.decodeBase64(result[0]); 
-        byte[] cipherString1 = Base64.decodeBase64(result[1]);
-        byte[] cipherString2 = Base64.decodeBase64(result[2]); 
-        byte[] encodedParams = Base64.decodeBase64(result[3]);
+        byte[] adminPubKeyEnc = Base64.decode(result[0], Base64.DEFAULT); 
+        byte[] cipherString1 = Base64.decode(result[1], Base64.DEFAULT);
+        byte[] cipherString2 = Base64.decode(result[2], Base64.DEFAULT);
+        byte[] encodedParams = Base64.decode(result[3], Base64.DEFAULT);
         
         // получает из байтов ключ АДМИНА и добавляет к общему секрету
         KeyFactory userKeyFac = KeyFactory.getInstance("DH");
@@ -83,7 +83,7 @@ public class Abonent {
     
     private String[] DHGenerateAdmin(String userPubKeyEncStr) throws Exception {
         // АДМИН из байтов АЛИСЫ формирует её публичный ключ 
-    	byte[] userPubKeyEnc = Base64.decodeBase64(userPubKeyEncStr);
+    	byte[] userPubKeyEnc = Base64.decode(userPubKeyEncStr, Base64.DEFAULT);
         KeyFactory adminKeyFac = KeyFactory.getInstance("DH");
         X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(userPubKeyEnc);
         PublicKey userPubKey = adminKeyFac.generatePublic(x509KeySpec); 
@@ -116,10 +116,10 @@ public class Abonent {
         
         // перегенерировать байты в текст и передать
         String[] resultString = new String[4];
-        resultString[0] = Base64.encodeBase64String(adminPubKeyEnc);
-        resultString[1] = Base64.encodeBase64String(cipherString1);
-        resultString[2] = Base64.encodeBase64String(cipherString2);
-        resultString[3] = Base64.encodeBase64String(encodedParams);
+        resultString[0] = Base64.encodeToString(adminPubKeyEnc, Base64.DEFAULT);
+        resultString[1] = Base64.encodeToString(cipherString1, Base64.DEFAULT);
+        resultString[2] = Base64.encodeToString(cipherString2, Base64.DEFAULT);
+        resultString[3] = Base64.encodeToString(encodedParams, Base64.DEFAULT);
         
         return resultString;
     }
@@ -135,7 +135,7 @@ public class Abonent {
 
             byte[] encrypted = cipher.doFinal(value.getBytes());
 
-            return Base64.encodeBase64String(encrypted);
+            return Base64.encodeToString(encrypted, Base64.DEFAULT);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -150,7 +150,7 @@ public class Abonent {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
 
-            byte[] original = cipher.doFinal(Base64.decodeBase64(encrypted));
+            byte[] original = cipher.doFinal(Base64.decode(encrypted, Base64.DEFAULT));
 
             return new String(original);
         } catch (Exception ex) {
