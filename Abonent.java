@@ -51,12 +51,12 @@ public class Abonent {
         byte[] alicePubKeyEnc = aliceKpair.getPublic().getEncoded();
         
         // получает его ключ, сессионную пару и параметры шифрования
-        byte[][] result = mainAbonent.DHGenerateBob(alicePubKeyEnc);
-              
-        byte[] bobPubKeyEnc = result[0]; 
-        byte[] cipherString1 = result[1];
-        byte[] cipherString2 = result[2]; 
-        byte[] encodedParams = result[3];
+        String[] result = mainAbonent.DHGenerateBob(alicePubKeyEnc);
+             
+        byte[] bobPubKeyEnc = Base64.decodeBase64(result[0]); 
+        byte[] cipherString1 = Base64.decodeBase64(result[1]);
+        byte[] cipherString2 = Base64.decodeBase64(result[2]); 
+        byte[] encodedParams = Base64.decodeBase64(result[3]);
         
         // получает из байтов ключ БОБА и добавляет к общему секрету
         KeyFactory aliceKeyFac = KeyFactory.getInstance("DH");
@@ -80,7 +80,7 @@ public class Abonent {
         sessionPair_[1] = new String(aliceCipher.doFinal(cipherString2));
     }
     
-    private byte[][] DHGenerateBob(byte[] alicePubKeyEnc) throws Exception {
+    private String[] DHGenerateBob(byte[] alicePubKeyEnc) throws Exception {
         // Боб из байтов АЛИСЫ формирует её публичный ключ 
         KeyFactory bobKeyFac = KeyFactory.getInstance("DH");
         X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(alicePubKeyEnc);
@@ -101,7 +101,7 @@ public class Abonent {
         bobKeyAgree.doPhase(alicePubKey, true);
         byte[] bobSharedSecret = bobKeyAgree.generateSecret();
         
-        // формирует AES ключ и шифрует им свой секретный ключ
+        // формирует AES ключ
         SecretKeySpec bobAesKey = new SecretKeySpec(bobSharedSecret, 0, 16, "AES");
         // создаёт шифр, применяет его и параметры шифрования
         Cipher bobCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -112,13 +112,18 @@ public class Abonent {
         byte[] cipherString2 = bobCipher.doFinal(sessionPair_[1].getBytes());
         byte[] encodedParams = bobCipher.getParameters().getEncoded();
         
-        byte[][] result = new byte[4][];
-        result[0] = bobPubKeyEnc;
-        result[1] = cipherString1;
-        result[2] = cipherString2;
-        result[3] = encodedParams;
-        
-        return result;
+        byte[][] resultByte = new byte[4][];
+        resultByte[0] = bobPubKeyEnc;
+        resultByte[1] = cipherString1;
+        resultByte[2] = cipherString2;
+        resultByte[3] = encodedParams;
+        // перегенерировать байты в текст и передать
+        String[] resultString = new String[4];
+        resultString[0] = Base64.encodeBase64String(bobPubKeyEnc);
+        resultString[1] = Base64.encodeBase64String(cipherString1);
+        resultString[2] = Base64.encodeBase64String(cipherString2);
+        resultString[3] = Base64.encodeBase64String(encodedParams); 
+        return resultString;
     }
     
     // AES methods - ДЛЯ ШИФРОВАНИЯ СООБЩЕНИЙ
