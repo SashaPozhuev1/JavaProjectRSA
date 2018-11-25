@@ -29,7 +29,7 @@ public class Abonent {
                 }            
             }
             else{ 
-            	DHGenerateAlice(mainAbonent);
+            	DHGenerateUser(mainAbonent);
             }
         }
         catch(Exception ex) {
@@ -38,85 +38,85 @@ public class Abonent {
     }
     
     // DH - methods
-    private void DHGenerateAlice(Abonent mainAbonent) throws Exception {
-    	// АЛИСА создаёт ключ 2048 бит
+    private void DHGenerateUser(Abonent mainAbonent) throws Exception {
+    	// ЮЗЕР создаёт ключ 2048 бит
     	SecureRandom secureRandom = new SecureRandom();
-        KeyPairGenerator aliceKpairGen = KeyPairGenerator.getInstance("DH");
-        aliceKpairGen.initialize(2048, secureRandom);
-        KeyPair aliceKpair = aliceKpairGen.generateKeyPair();
+        KeyPairGenerator userKpairGen = KeyPairGenerator.getInstance("DH");
+        userKpairGen.initialize(2048, secureRandom);
+        KeyPair userKpair = userKpairGen.generateKeyPair();
         
-        // АЛИСА создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
-        KeyAgreement aliceKeyAgree = KeyAgreement.getInstance("DH");
-        aliceKeyAgree.init(aliceKpair.getPrivate());
-        // отправляем строку Бобу
-        byte[] alicePubKeyEnc = aliceKpair.getPublic().getEncoded();
-        String alicePubKeyEncStr = Base64.encodeBase64String(alicePubKeyEnc);
+        // ЮЗЕР создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
+        KeyAgreement userKeyAgree = KeyAgreement.getInstance("DH");
+        userKeyAgree.init(userKpair.getPrivate());
+        // отправляем строку АДМИНу
+        byte[] userPubKeyEnc = userKpair.getPublic().getEncoded();
+        String userPubKeyEncStr = Base64.encodeBase64String(userPubKeyEnc);
         // получает его ключ, сессионную пару и параметры шифрования
-        String[] result = mainAbonent.DHGenerateBob(alicePubKeyEncStr);
+        String[] result = mainAbonent.DHGenerateAdmin(userPubKeyEncStr);
              
-        byte[] bobPubKeyEnc = Base64.decodeBase64(result[0]); 
+        byte[] adminPubKeyEnc = Base64.decodeBase64(result[0]); 
         byte[] cipherString1 = Base64.decodeBase64(result[1]);
         byte[] cipherString2 = Base64.decodeBase64(result[2]); 
         byte[] encodedParams = Base64.decodeBase64(result[3]);
         
-        // получает из байтов ключ БОБА и добавляет к общему секрету
-        KeyFactory aliceKeyFac = KeyFactory.getInstance("DH");
-        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(bobPubKeyEnc);
-        PublicKey bobPubKey = aliceKeyFac.generatePublic(x509KeySpec); 
+        // получает из байтов ключ АДМИНА и добавляет к общему секрету
+        KeyFactory userKeyFac = KeyFactory.getInstance("DH");
+        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(adminPubKeyEnc);
+        PublicKey adminPubKey = userKeyFac.generatePublic(x509KeySpec); 
         
-        aliceKeyAgree.doPhase(bobPubKey, true);
-        byte[] aliceSharedSecret = aliceKeyAgree.generateSecret();
+        userKeyAgree.doPhase(adminPubKey, true);
+        byte[] userSharedSecret = userKeyAgree.generateSecret();
         
         // формирует AES ключ	
-        SecretKeySpec aliceAesKey = new SecretKeySpec(aliceSharedSecret, 0, 16, "AES");
+        SecretKeySpec userAesKey = new SecretKeySpec(userSharedSecret, 0, 16, "AES");
         // применяет параметры шифрования и свой AES ключ
         AlgorithmParameters aesParams = AlgorithmParameters.getInstance("AES");
         aesParams.init(encodedParams);      
         // создаёт шифр с полученными параметрами шифрования
-        Cipher aliceCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        aliceCipher.init(Cipher.DECRYPT_MODE, aliceAesKey, aesParams);
+        Cipher userCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        userCipher.init(Cipher.DECRYPT_MODE, userAesKey, aesParams);
         
         // расшифровавыет сессионную пару
-        sessionPair_[0] = new String(aliceCipher.doFinal(cipherString1));
-        sessionPair_[1] = new String(aliceCipher.doFinal(cipherString2));
+        sessionPair_[0] = new String(userCipher.doFinal(cipherString1));
+        sessionPair_[1] = new String(userCipher.doFinal(cipherString2));
     }
     
-    private String[] DHGenerateBob(String alicePubKeyEncStr) throws Exception {
-        // Боб из байтов АЛИСЫ формирует её публичный ключ 
-    	byte[] alicePubKeyEnc = Base64.decodeBase64(alicePubKeyEncStr);
-        KeyFactory bobKeyFac = KeyFactory.getInstance("DH");
-        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(alicePubKeyEnc);
-        PublicKey alicePubKey = bobKeyFac.generatePublic(x509KeySpec); 
+    private String[] DHGenerateAdmin(String userPubKeyEncStr) throws Exception {
+        // АДМИН из байтов АЛИСЫ формирует её публичный ключ 
+    	byte[] userPubKeyEnc = Base64.decodeBase64(userPubKeyEncStr);
+        KeyFactory adminKeyFac = KeyFactory.getInstance("DH");
+        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(userPubKeyEnc);
+        PublicKey userPubKey = adminKeyFac.generatePublic(x509KeySpec); 
 
-        // БОБ получает параметры ключа АЛИСЫ и на их основе создаёт пару собственных ключей
-        DHParameterSpec dhParamFromAlicePubKey = ((DHPublicKey)alicePubKey).getParams();
+        // АДМИН получает параметры ключа АЛИСЫ и на их основе создаёт пару собственных ключей
+        DHParameterSpec dhParamFromuserPubKey = ((DHPublicKey)userPubKey).getParams();
         SecureRandom secureRandom = new SecureRandom();
-        KeyPairGenerator bobKpairGen = KeyPairGenerator.getInstance("DH");
-        bobKpairGen.initialize(dhParamFromAlicePubKey, secureRandom);
-        KeyPair bobKpair = bobKpairGen.generateKeyPair();
+        KeyPairGenerator adminKpairGen = KeyPairGenerator.getInstance("DH");
+        adminKpairGen.initialize(dhParamFromuserPubKey, secureRandom);
+        KeyPair adminKpair = adminKpairGen.generateKeyPair();
 
-        // БОБ создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
-        KeyAgreement bobKeyAgree = KeyAgreement.getInstance("DH");
-        bobKeyAgree.init(bobKpair.getPrivate());
-        byte[] bobPubKeyEnc = bobKpair.getPublic().getEncoded();
+        // АДМИН создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
+        KeyAgreement adminKeyAgree = KeyAgreement.getInstance("DH");
+        adminKeyAgree.init(adminKpair.getPrivate());
+        byte[] adminPubKeyEnc = adminKpair.getPublic().getEncoded();
         // добавляет ключ Алисы к общему секрету
-        bobKeyAgree.doPhase(alicePubKey, true);
-        byte[] bobSharedSecret = bobKeyAgree.generateSecret();
+        adminKeyAgree.doPhase(userPubKey, true);
+        byte[] adminSharedSecret = adminKeyAgree.generateSecret();
         
         // формирует AES ключ и шифрует им свой секретный ключ
-        SecretKeySpec bobAesKey = new SecretKeySpec(bobSharedSecret, 0, 16, "AES");
+        SecretKeySpec adminAesKey = new SecretKeySpec(adminSharedSecret, 0, 16, "AES");
         // создаёт шифр, применяет его и параметры шифрования
-        Cipher bobCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        bobCipher.init(Cipher.ENCRYPT_MODE, bobAesKey);
+        Cipher adminCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        adminCipher.init(Cipher.ENCRYPT_MODE, adminAesKey);
         
         // нужно передать зашифрованный текст и параметры шифрования
-        byte[] cipherString1 = bobCipher.doFinal(sessionPair_[0].getBytes());
-        byte[] cipherString2 = bobCipher.doFinal(sessionPair_[1].getBytes());
-        byte[] encodedParams = bobCipher.getParameters().getEncoded();
+        byte[] cipherString1 = adminCipher.doFinal(sessionPair_[0].getBytes());
+        byte[] cipherString2 = adminCipher.doFinal(sessionPair_[1].getBytes());
+        byte[] encodedParams = adminCipher.getParameters().getEncoded();
         
         // перегенерировать байты в текст и передать
         String[] resultString = new String[4];
-        resultString[0] = Base64.encodeBase64String(bobPubKeyEnc);
+        resultString[0] = Base64.encodeBase64String(adminPubKeyEnc);
         resultString[1] = Base64.encodeBase64String(cipherString1);
         resultString[2] = Base64.encodeBase64String(cipherString2);
         resultString[3] = Base64.encodeBase64String(encodedParams);
