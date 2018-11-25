@@ -36,7 +36,8 @@ public class Abonent {
             ex.printStackTrace();
         }
     }
-
+    
+    // DH - methods
     private void DHGenerateAlice(Abonent mainAbonent) throws Exception {
     	// АЛИСА создаёт ключ 2048 бит
     	SecureRandom secureRandom = new SecureRandom();
@@ -47,11 +48,11 @@ public class Abonent {
         // АЛИСА создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
         KeyAgreement aliceKeyAgree = KeyAgreement.getInstance("DH");
         aliceKeyAgree.init(aliceKpair.getPrivate());
-        // отправляем это Бобу
+        // отправляем строку Бобу
         byte[] alicePubKeyEnc = aliceKpair.getPublic().getEncoded();
-        
+        String alicePubKeyEncStr = Base64.encodeBase64String(alicePubKeyEnc);
         // получает его ключ, сессионную пару и параметры шифрования
-        String[] result = mainAbonent.DHGenerateBob(alicePubKeyEnc);
+        String[] result = mainAbonent.DHGenerateBob(alicePubKeyEncStr);
              
         byte[] bobPubKeyEnc = Base64.decodeBase64(result[0]); 
         byte[] cipherString1 = Base64.decodeBase64(result[1]);
@@ -80,8 +81,9 @@ public class Abonent {
         sessionPair_[1] = new String(aliceCipher.doFinal(cipherString2));
     }
     
-    private String[] DHGenerateBob(byte[] alicePubKeyEnc) throws Exception {
+    private String[] DHGenerateBob(String alicePubKeyEncStr) throws Exception {
         // Боб из байтов АЛИСЫ формирует её публичный ключ 
+    	byte[] alicePubKeyEnc = Base64.decodeBase64(alicePubKeyEncStr);
         KeyFactory bobKeyFac = KeyFactory.getInstance("DH");
         X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(alicePubKeyEnc);
         PublicKey alicePubKey = bobKeyFac.generatePublic(x509KeySpec); 
@@ -101,7 +103,7 @@ public class Abonent {
         bobKeyAgree.doPhase(alicePubKey, true);
         byte[] bobSharedSecret = bobKeyAgree.generateSecret();
         
-        // формирует AES ключ
+        // формирует AES ключ и шифрует им свой секретный ключ
         SecretKeySpec bobAesKey = new SecretKeySpec(bobSharedSecret, 0, 16, "AES");
         // создаёт шифр, применяет его и параметры шифрования
         Cipher bobCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -112,17 +114,13 @@ public class Abonent {
         byte[] cipherString2 = bobCipher.doFinal(sessionPair_[1].getBytes());
         byte[] encodedParams = bobCipher.getParameters().getEncoded();
         
-        byte[][] resultByte = new byte[4][];
-        resultByte[0] = bobPubKeyEnc;
-        resultByte[1] = cipherString1;
-        resultByte[2] = cipherString2;
-        resultByte[3] = encodedParams;
         // перегенерировать байты в текст и передать
         String[] resultString = new String[4];
         resultString[0] = Base64.encodeBase64String(bobPubKeyEnc);
         resultString[1] = Base64.encodeBase64String(cipherString1);
         resultString[2] = Base64.encodeBase64String(cipherString2);
-        resultString[3] = Base64.encodeBase64String(encodedParams); 
+        resultString[3] = Base64.encodeBase64String(encodedParams);
+        
         return resultString;
     }
     
