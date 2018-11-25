@@ -1,10 +1,11 @@
 import javax.crypto.*;
+import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import java.math.BigInteger;
 import java.security.*;
-import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -27,80 +28,100 @@ public class Abonent {
                     sessionPair_[str] = new String(strings[str]);
                 }            
             }
-            else{
-                // RSA key generation
-                SecureRandom secureRandom = new SecureRandom(); // mb insert byte;
-                KeyPairGenerator keyGen = KeyPairGenerator.getInstance( "RSA" ); 
-                keyGen.initialize(2048, secureRandom);
-                KeyPair pg = keyGen.genKeyPair();
-                Cipher cipher = Cipher.getInstance( "RSA" );
-            // ЛЁХА СМОТРИ
-                String ss = pg.getPublic().toString(); // перевожу публичный ключ в строку
-                // эти строки передаёшь:
-                String modulus = ss.substring(ss.indexOf(":") + 2, ss.indexOf("\n", ss.indexOf(":")));
-                String exponent = ss.substring(ss.lastIndexOf(":") + 2);
-                // когда принимаешь, делаешь это:
-                BigInteger M = new BigInteger(modulus);
-                BigInteger E = new BigInteger(exponent);
-                RSAPublicKeySpec spec = new RSAPublicKeySpec(M, E);
-                KeyFactory factory = KeyFactory.getInstance("RSA");
-                PublicKey public_key_who = factory.generatePublic(spec);
-                
-                System.out.print(pg.getPublic() + "\n" +
-                		public_key_who + "\n" //+
-                //		spec + "\n" +
-                //		modulus + "\n" + 
-                //		exponent + "\n"
-                		);
-                // тут конец.
-                getSession(mainAbonent, pg, public_key_who, cipher);
+            else{ 
+            	DHGenerateAlice(mainAbonent);
             }
         }
         catch(Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+    private void DHGenerateAlice(Abonent mainAbonent) throws Exception {
+    	// АЛИСА создаёт ключ 2048 бит
+    	SecureRandom secureRandom = new SecureRandom();
+        KeyPairGenerator aliceKpairGen = KeyPairGenerator.getInstance("DH");
+        aliceKpairGen.initialize(2048, secureRandom);
+        KeyPair aliceKpair = aliceKpairGen.generateKeyPair();
+        
+        // АЛИСА создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
+        KeyAgreement aliceKeyAgree = KeyAgreement.getInstance("DH");
+        aliceKeyAgree.init(aliceKpair.getPrivate());
+        // отправляем это Бобу
+        byte[] alicePubKeyEnc = aliceKpair.getPublic().getEncoded();
+        
+        // получает его ключ, сессионную пару и параметры шифрования
+        byte[][] result = mainAbonent.DHGenerateBob(alicePubKeyEnc);
+              
+        byte[] bobPubKeyEnc = result[0]; 
+        byte[] cipherString1 = result[1];
+        byte[] cipherString2 = result[2]; 
+        byte[] encodedParams = result[3];
+        
+        // получает из байтов ключ БОБА и добавляет к общему секрету
+        KeyFactory aliceKeyFac = KeyFactory.getInstance("DH");
+        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(bobPubKeyEnc);
+        PublicKey bobPubKey = aliceKeyFac.generatePublic(x509KeySpec); 
+        
+        aliceKeyAgree.doPhase(bobPubKey, true);
+        byte[] aliceSharedSecret = aliceKeyAgree.generateSecret();
+        
+        // формирует AES ключ	
+        SecretKeySpec aliceAesKey = new SecretKeySpec(aliceSharedSecret, 0, 16, "AES");
+        // применяет параметры шифрования и свой AES ключ
+        AlgorithmParameters aesParams = AlgorithmParameters.getInstance("AES");
+        aesParams.init(encodedParams);      
+        // создаёт шифр с полученными параметрами шифрования
+        Cipher aliceCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        aliceCipher.init(Cipher.DECRYPT_MODE, aliceAesKey, aesParams);
+        
+        // расшифровавыет сессионную пару
+        sessionPair_[0] = new String(aliceCipher.doFinal(cipherString1));
+        sessionPair_[1] = new String(aliceCipher.doFinal(cipherString2));
     }
     
-    private void getSession(Abonent mainAbonent, KeyPair pg, PublicKey publicKey, Cipher cipher) {
-        try {
-            for(int i = 0; i < 2; ++i) {
-                sessionPair_[i] = new String(
-                    decryptRSA(
-                            mainAbonent.encryptRSA(i, publicKey, cipher), // pg.getPublic()
-                            pg.getPrivate(),
-                            cipher
-                            )
-                    );
-            }
-        }
-        catch(Exception ex) {
-            ex.printStackTrace();
-        }
-    }
+    private byte[][] DHGenerateBob(byte[] alicePubKeyEnc) throws Exception {
+        // Боб из байтов АЛИСЫ формирует её публичный ключ 
+        KeyFactory bobKeyFac = KeyFactory.getInstance("DH");
+        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(alicePubKeyEnc);
+        PublicKey alicePubKey = bobKeyFac.generatePublic(x509KeySpec); 
 
-    // RSA methods - ДЛЯ ШИФРОВАНИЯ AES КЛЮЧА
-    private byte[] encryptRSA(int elem, PublicKey openKey, Cipher cipher){ // PublicKey
-        try {
-            cipher.init( Cipher.ENCRYPT_MODE, openKey );
-            return cipher.doFinal( sessionPair_[elem].getBytes("UTF-8") ); // or toString()
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return null;
-    }
+        // БОБ получает параметры ключа АЛИСЫ и на их основе создаёт пару собственных ключей
+        DHParameterSpec dhParamFromAlicePubKey = ((DHPublicKey)alicePubKey).getParams();
+        SecureRandom secureRandom = new SecureRandom();
+        KeyPairGenerator bobKpairGen = KeyPairGenerator.getInstance("DH");
+        bobKpairGen.initialize(dhParamFromAlicePubKey, secureRandom);
+        KeyPair bobKpair = bobKpairGen.generateKeyPair();
 
-    private String decryptRSA(byte[] secretMessage, PrivateKey secretKey, Cipher cipher){
-        try {
-        cipher.init( Cipher.DECRYPT_MODE, secretKey );
-        return new String(cipher.doFinal(secretMessage), "UTF-8");
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return null;
+        // БОБ создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
+        KeyAgreement bobKeyAgree = KeyAgreement.getInstance("DH");
+        bobKeyAgree.init(bobKpair.getPrivate());
+        byte[] bobPubKeyEnc = bobKpair.getPublic().getEncoded();
+        // добавляет ключ Алисы к общему секрету
+        bobKeyAgree.doPhase(alicePubKey, true);
+        byte[] bobSharedSecret = bobKeyAgree.generateSecret();
+        
+        // формирует AES ключ и шифрует им свой секретный ключ
+        SecretKeySpec bobAesKey = new SecretKeySpec(bobSharedSecret, 0, 16, "AES");
+        // создаёт шифр, применяет его и параметры шифрования
+        Cipher bobCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        bobCipher.init(Cipher.ENCRYPT_MODE, bobAesKey);
+        
+        // нужно передать зашифрованный текст и параметры шифрования
+        byte[] cipherString1 = bobCipher.doFinal(sessionPair_[0].getBytes());
+        byte[] cipherString2 = bobCipher.doFinal(sessionPair_[1].getBytes());
+        byte[] encodedParams = bobCipher.getParameters().getEncoded();
+        
+        System.out.print(encodedParams.length + "\n" + encodedParams.toString() + "\n");
+        byte[][] result = new byte[4][];
+        result[0] = bobPubKeyEnc;
+        result[1] = cipherString1;
+        result[2] = cipherString2;
+        result[3] = encodedParams;
+        
+        return result;
     }
-
+    
     // AES methods - ДЛЯ ШИФРОВАНИЯ СООБЩЕНИЙ
     public String encrypt(String value) {
         try {
