@@ -112,7 +112,6 @@ public class Abonent {
         byte[] cipherString2 = bobCipher.doFinal(sessionPair_[1].getBytes());
         byte[] encodedParams = bobCipher.getParameters().getEncoded();
         
-        System.out.print(encodedParams.length + "\n" + encodedParams.toString() + "\n");
         byte[][] result = new byte[4][];
         result[0] = bobPubKeyEnc;
         result[1] = cipherString1;
