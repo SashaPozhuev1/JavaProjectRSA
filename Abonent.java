@@ -42,7 +42,7 @@ public class Abonent {
     	// ЮЗЕР создаёт ключ 2048 бит
     	SecureRandom secureRandom = new SecureRandom();
         KeyPairGenerator userKpairGen = KeyPairGenerator.getInstance("DH");
-        userKpairGen.initialize(2048, secureRandom);
+        userKpairGen.initialize(1024, secureRandom);
         KeyPair userKpair = userKpairGen.generateKeyPair();
         
         // ЮЗЕР создаёт DH KeyAgreement объект (приватный ключ) и инвертирует публичный ключ в байты
