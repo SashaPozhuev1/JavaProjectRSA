@@ -3,3 +3,6 @@ jdk:
   - oraclejdk8
 
 script: ant build
+
+before_install:
+  - cd java
